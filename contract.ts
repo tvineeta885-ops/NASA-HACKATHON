@@ -12,6 +12,12 @@ export type Dataset = {
   agreement: Record<string, { shared: number; modis_only: number; viirs_only: number; share: number | null }>
   count: number
   skipped: number
+  harmonized?: {
+    months: string[]
+    days: Record<string, { value: number; cells?: Cell[]; detections?: number }>
+    monthly: Record<string, { total: number; comparison: Comparison | null }>
+    method: { transition: string; fit_years: [number, number]; holdout_months: number; raw_mae: number; adjusted_mae: number }
+  } | null
   recent?: {
     fetched_at: string
     dates: string[]

@@ -321,9 +321,17 @@ svg {
   color: var(--muted);
   font-size: 11px;
 }
+.recent-source {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  font-size: 12px;
+}
+.recent-source a { color: var(--green); text-decoration: underline; }
 
 .toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: end;
   gap: 18px;
   padding: 16px 0;
@@ -1258,6 +1266,8 @@ footer a:hover,.map-credit:hover {
   }
 }
 @media (max-width:380px) {
+  .layer-filter { min-width: 0; grid-template-columns: minmax(0, 1fr); }
+  .segmented { width: fit-content; flex-wrap: wrap; }
   .metrics { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .metrics .metric:last-child { grid-column: 1/-1; }
   .navigation a,.navigation button {
