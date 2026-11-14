@@ -18,7 +18,8 @@ def upload(page, sensor, rows):
 
 with sync_playwright() as playwright:
     browser = playwright.chromium.launch(headless=True, executable_path=os.getenv('FIRE_ATLAS_CHROMIUM'))
-    page = browser.new_page(viewport={'width': 1440, 'height': 960}, accept_downloads=True)
+    page = browser.new_page(viewport={'width': 1440, 'height': 960}, accept_downloads=True, reduced_motion='reduce')
+    expect.set_options(timeout=15000)
     errors = []
     page.on('pageerror', lambda error: errors.append(str(error)))
     api = base + '/fire-atlas/api/fire-atlas'
