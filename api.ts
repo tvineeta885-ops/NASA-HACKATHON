@@ -2,8 +2,8 @@ import type { Bounds, Dataset, Sensor } from './contract'
 
 export type ImportFiles = Record<Sensor, File>
 
-export async function loadDataset(bounds: Bounds, files?: ImportFiles, signal?: AbortSignal): Promise<Dataset> {
-  const route = files ? 'import' : 'archive'
+export async function loadDataset(bounds: Bounds, files?: ImportFiles, signal?: AbortSignal, recent = false): Promise<Dataset> {
+  const route = files ? 'import' : recent ? 'recent' : 'archive'
   const query = new URLSearchParams({ bounds: bounds.join(',') })
   const body = files ? new FormData() : undefined
   if (body && files) {

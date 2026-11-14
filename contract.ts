@@ -12,6 +12,11 @@ export type Dataset = {
   agreement: Record<string, { shared: number; modis_only: number; viirs_only: number; share: number | null }>
   count: number
   skipped: number
+  recent?: {
+    fetched_at: string
+    dates: string[]
+    feeds: Record<Sensor, { first_observed_at: string; last_observed_at: string; url: string }>
+  }
 }
 
 export const portugal: Bounds = [-9.6, 36.9, -6.1, 42.2]
