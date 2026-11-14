@@ -24,6 +24,8 @@ Run `npm run build` and `npm start` from this repository root to run the product
 - `earth.tsx` renders the globe. With the app running, `python test_earth.py http://127.0.0.1:3000` checks WebGL, keyboard rotation, reduced motion and the static fallback in Chromium.
 - `test_explorer.py` verifies the UI and API together. With both processes running, run `python test_explorer.py http://127.0.0.1:3000`. The test requires Python Playwright and Chromium. Supply `FIRE_ATLAS_CHROMIUM` to use a specific executable.
 
-The demo opens on mainland Portugal in August 2025. Compare both sensors, select another date or region, and export the month. For another area, upload one FIRMS CSV per instrument with at least one overlapping month. [NASA FIRMS resources](https://www.earthdata.nasa.gov/data/tools/firms#links)
+The archive opens on mainland Portugal in August 2025. Select **Recent hotspots** to load NASA's near-real-time MODIS and NOAA-20 VIIRS downloads through FastAPI. The app shows each source and its latest acquisition time. Choose **Worldwide** or set custom bounds for another area. The recent calendar and CSV cover only the dates in the downloaded snapshot. You can also upload one FIRMS CSV per instrument with at least one overlapping month. [NASA FIRMS resources](https://www.earthdata.nasa.gov/data/tools/firms#links)
 
 The data source, grid method, and coverage limits are documented in the [backend README](https://github.com/Anuvesh07/NSVI_backend#readme).
+
+**Harmonized** is the default for the Portugal archive. It extends the calendar back to 2003, displays MODIS-equivalent cell-days, and shows raw source hotspots on the map. Select **Combined**, **MODIS**, or **VIIRS** to inspect the unadjusted overlap. The historical chart and harmonized CSV use the same calibrated series.

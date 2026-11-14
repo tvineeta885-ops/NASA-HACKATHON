@@ -35,6 +35,12 @@ with sync_playwright() as playwright:
     assert page.request.get(base + '/fire-atlas/backend/archive/modis.csv').status == 404
     page.goto(base + '/fire-atlas/', wait_until='networkidle', timeout=20000)
     expect(page.get_by_role('heading', name='August 2025')).to_be_visible()
+    if archive.get('harmonized'):
+        expect(page.get_by_role('button', name='Harmonized')).to_have_attribute('aria-pressed', 'true')
+        page.get_by_label('Year', exact=True).select_option('2003')
+        expect(page.get_by_role('heading', name='August 2003')).to_be_visible()
+        page.get_by_label('Year', exact=True).select_option('2025')
+        page.get_by_role('button', name='Combined', exact=True).click()
     expect(page.locator('.metric-value').first).to_have_text('886')
     expect(page.locator('.earth-stage')).to_have_attribute('data-points', '118')
     expect(page.get_by_text('NASA FIRMS · 2013–2025')).to_be_visible()

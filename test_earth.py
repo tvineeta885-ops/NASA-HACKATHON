@@ -15,6 +15,7 @@ with sync_playwright() as playwright:
     page.goto(base + '/fire-atlas', timeout=30000)
     earth = page.locator('.earth-stage')
     expect(earth).to_have_attribute('data-renderer', 'webgl', timeout=20000)
+    page.get_by_role('button', name='Combined', exact=True).click()
     expect(earth).to_have_attribute('data-points', '118')
     expect(page.get_by_role('button', name='Pause Earth rotation')).to_have_count(0)
 
@@ -56,6 +57,7 @@ with sync_playwright() as playwright:
     fallback.goto(base + '/fire-atlas', timeout=30000)
     expect(fallback.locator('.earth-stage')).to_have_attribute('data-renderer', 'fallback')
     expect(fallback.locator('.earth-placeholder')).to_be_visible()
+    fallback.get_by_role('button', name='Combined', exact=True).click()
     expect(fallback.locator('.map-dot')).to_have_count(118)
     assert fallback.locator('.earth-canvas canvas').count() == 0
     fallback.get_by_role('button', name='Zoom to hotspots').click()
