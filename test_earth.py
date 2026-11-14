@@ -1,4 +1,4 @@
-"""Check the rendered globe, keyboard rotation, motion preference, and WebGL fallback."""
+"""Check globe motion, the flight to the regional map, and WebGL fallback."""
 import os
 import sys
 
@@ -26,12 +26,29 @@ with sync_playwright() as playwright:
     assert canvas.screenshot() != before, 'Keyboard rotation did not change the globe'
     page.get_by_role('button', name='Locate area').click()
     assert canvas.screenshot() != before, 'Centering on the selected area did not move the globe'
+    page.get_by_role('button', name='Zoom to hotspots').click()
+    regional_map = page.get_by_role('region', name='Hotspot map')
+    expect(regional_map).to_be_focused()
+    expect(regional_map).to_be_in_viewport()
 
-    page.emulate_media(reduced_motion='no-preference')
+    page = browser.new_page(viewport={'width': 1280, 'height': 900})
+    page.goto(base + '/fire-atlas', timeout=30000)
+    expect(page.locator('.earth-stage')).to_have_attribute('data-renderer', 'webgl', timeout=20000)
+    canvas = page.locator('.earth-canvas canvas')
+    before = canvas.screenshot()
+    page.wait_for_function('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))')
+    assert canvas.screenshot() != before, 'The globe should rotate on initial load'
     page.get_by_role('button', name='Pause Earth rotation').click()
     expect(page.get_by_role('button', name='Play Earth rotation')).to_be_visible()
     page.get_by_role('button', name='Play Earth rotation').click()
     expect(page.get_by_role('button', name='Pause Earth rotation')).to_be_visible()
+    page.get_by_role('button', name='Locate area').click()
+    expect(page.get_by_role('button', name='Play Earth rotation')).to_be_visible()
+    page.get_by_role('button', name='Zoom to hotspots').click()
+    regional_map = page.get_by_role('region', name='Hotspot map')
+    expect(regional_map).not_to_be_focused(timeout=300)
+    expect(regional_map).to_be_focused(timeout=5000)
+    expect(regional_map).to_be_in_viewport()
     browser.close()
 
     browser = playwright.chromium.launch(headless=True, executable_path=executable, args=['--disable-webgl'])
@@ -41,6 +58,8 @@ with sync_playwright() as playwright:
     expect(fallback.locator('.earth-placeholder')).to_be_visible()
     expect(fallback.locator('.map-dot')).to_have_count(118)
     assert fallback.locator('.earth-canvas canvas').count() == 0
+    fallback.get_by_role('button', name='Zoom to hotspots').click()
+    expect(fallback.get_by_role('region', name='Hotspot map')).to_be_focused()
     browser.close()
 
-print('Three.js globe, keyboard controls, motion preference and static fallback passed.')
+print('Three.js auto-rotation, keyboard controls, regional flight, reduced motion and WebGL fallback passed.')

@@ -2,7 +2,7 @@
 
 The Next.js App Router frontend uses React and TypeScript to render the burning activity calendar, hotspot map, sensor comparison, and seasonal history. It sends filters and FIRMS CSV uploads to FastAPI and exports the returned daily results as CSV.
 
-The Three.js Earth uses NASA GIBS Blue Marble imagery and plots the selected day's FIRMS cells. Drag or use the arrow keys to rotate. **Locate area** centers the globe on the current area. Reduced-motion preferences disable auto-rotation, and a still Earth preview is available when WebGL is unavailable.
+The Three.js Earth uses NASA GIBS Blue Marble imagery and plots the selected day's FIRMS cells. It rotates on load. Drag or use the arrow keys to take control, or use Play and Pause. **Locate area** smoothly turns Earth toward the selected area. **Zoom to hotspots** flies in and brings the regional map into focus. Reduced-motion preferences skip the flight and auto-rotation. A still Earth preview is available when WebGL is unavailable.
 
 ## Run locally
 
