@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import {
   Activity, ArrowDownToLine, ArrowDownRight, ArrowUpRight, CalendarDays, ChevronDown, ChevronLeft,
-  ChevronRight, CircleHelp, Database, Flame, Globe2, Layers, MapPin, Maximize, Minus, Plus, Radio,
+  ChevronRight, CircleHelp, Database, Flame, Globe2, Layers, MapPin, Maximize, Minus, Plus,
   Satellite, Upload, X,
 } from 'lucide-react'
 import {
@@ -14,6 +15,12 @@ import { layers, maxFileBytes, portugal, world, type Bounds, type Cell, type Dat
 import { loadDataset, type ImportFiles as CsvFiles } from './api'
 import portugalImage from './assets/portugal.jpg'
 import worldImage from './assets/world.jpg'
+import earthStill from './assets/earth-still.webp'
+
+const Earth = dynamic(() => import('./earth'), {
+  ssr: false,
+  loading: () => <div className="earth-stage"><div className="earth-placeholder" aria-hidden="true" style={{ backgroundImage: `url(${earthStill.src})` }} /></div>,
+})
 
 type View = 'method' | 'compare' | 'import'
 const defaultMonth = '2025-08'
@@ -210,6 +217,7 @@ export default function Explorer() {
     || bounds[3] <= portugal[1] || bounds[1] >= portugal[3])
   const partialDemo = !importedFiles && !outsideDemo && customBounds && (
     bounds[0] < portugal[0] || bounds[1] < portugal[1] || bounds[2] > portugal[2] || bounds[3] > portugal[3])
+  const globeFocus = { lat: (bounds[1] + bounds[3]) / 2, lon: (bounds[0] + bounds[2]) / 2 }
   const comparison = dataset?.monthly[month]?.[layer].comparison
   const agreement = dataset?.agreement[month]
   const archiveFirst = dataset?.months[0]?.slice(0, 4)
@@ -238,14 +246,23 @@ export default function Explorer() {
 
   return <>
     <header className="topbar"><div className="top-inner">
-      <Link href="/" className="identity" aria-label="Fire Atlas home"><span className="brand-icon"><Flame size={22} fill="currentColor" strokeWidth={1.5} /></span><span>Fire Atlas<small>EARTH OBSERVATION</small></span></Link>
-      <nav aria-label="Main navigation" className="navigation"><a className="current" href="#explorer" aria-current="page"><CalendarDays size={16} /> Explorer</a><button onClick={() => setDialog('compare')} disabled={!dataset || outsideDemo}><Layers size={16} /> Compare sensors</button><button onClick={() => setDialog('method')}><CircleHelp size={16} /> Methodology</button></nav>
+      <Link href="/" className="identity" aria-label="Fire Atlas home"><span className="brand-icon"><Flame size={22} strokeWidth={1.5} /></span><span>Fire Atlas</span></Link>
+      <nav aria-label="Main navigation" className="navigation"><a className="current" href="#calendar-title"><CalendarDays size={16} /> Calendar</a><button onClick={() => setDialog('compare')} disabled={!dataset || outsideDemo}><Layers size={16} /> Compare sensors</button><button onClick={() => setDialog('method')}><CircleHelp size={16} /> Methodology</button></nav>
       <button className="button import-button" onClick={() => setDialog('import')}><Upload size={15} /><span>Import CSV</span></button>
     </div></header>
     <main className="shell" id="explorer">
       <div className="hero">
-        <div><div className="kicker"><Radio size={14} /> HISTORICAL FIRE INTELLIGENCE</div><h1>Burning activity <em>explorer</em></h1><p>See where and when burning activity was detected across the MODIS and VIIRS record.</p></div>
-        <div className="archive-badge"><div><i /> {importedFiles ? 'IMPORTED RECORD' : 'HISTORICAL ARCHIVE'}</div><span>{importedFiles ? 'FIRMS CSV · coverage unverified' : archiveFirst ? `NASA FIRMS · ${archiveFirst}–${archiveLast}` : 'NASA FIRMS standard processing'}</span></div>
+        <div className="hero-copy">
+          <div className="archive-badge">{importedFiles ? 'Imported FIRMS CSV' : archiveFirst ? `NASA FIRMS · ${archiveFirst}–${archiveLast}` : 'NASA FIRMS standard processing'}</div>
+          <h1>Fire <em>atlas.</em></h1>
+          <p>Explore when and where MODIS and VIIRS detected burning activity.</p>
+          {dataset && !outsideDemo && <div className="hero-record">
+            <div className="hero-period"><MapPin size={14} /> {regionName}<span>{isoMonth(month)}</span></div>
+            <div className="hero-stat"><strong className="metric-value">{count(total)}</strong><span>occupied<br /> cell-days</span></div>
+            <p>{layer} · 5 km grid</p>
+          </div>}
+        </div>
+        <Earth cells={selectedCells} layer={layer} focus={globeFocus} date={selected} area={regionName} />
       </div>
       <div className="toolbar">
         <div className="area-filter"><span className="micro filter-label">AREA OF INTEREST</span><div className="select-field"><MapPin size={16} /><select aria-label="Area of interest" value={customBounds ? 'custom' : region} disabled={loading} onChange={event => {
@@ -266,7 +283,6 @@ export default function Explorer() {
       {loading && <p className="status" role="status">{dataset ? 'Updating observations…' : 'Loading NASA FIRMS archive…'}</p>}
       {dataset && !outsideDemo && <>
         <section className="metrics" aria-label="Month summary">
-          <article className="metric"><div className="metric-label"><Activity size={16} /> Occupied cell-days</div><div className="metric-value">{count(total)}</div><div className="metric-note">{layer} · 5 km grid</div></article>
           <article className="metric"><div className="metric-label"><CalendarDays size={16} /> Days with detections</div><div className="metric-value">{calendarCounts.filter(Boolean).length}<small> / {calendar.length}</small></div><div className="metric-note">UTC days this month</div></article>
           <article className="metric"><div className="metric-label"><Flame size={16} /> Peak activity</div><div className="metric-value">{count(peak)}<small> cells</small></div><div className="metric-note">{peak ? <button className="text-link" onClick={() => setDate(peakDay)}>{shortDay(peakDay)} <ArrowUpRight size={12} /></button> : 'No detected cells'}</div></article>
           <article className={`metric ${comparison?.above ? 'anomaly-metric' : ''}`}><div className="metric-label"><Activity size={16} /> vs. historical median</div><div className="metric-value">{change === null ? '—' : `${change >= 0 ? '+' : '−'}${count(Math.round(Math.abs(change)))}%`}{change !== null && (change >= 0 ? <ArrowUpRight size={22} /> : <ArrowDownRight size={22} />)}</div><div className="metric-note">{comparison ? `${count(comparison.median)} cell-days · above ${comparison.prior_below} of ${comparison.years} prior years` : importedFiles ? 'Imported coverage unverified' : 'Needs 3 prior archive years'}</div></article>
