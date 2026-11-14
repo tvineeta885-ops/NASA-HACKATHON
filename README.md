@@ -2,6 +2,8 @@
 
 The Next.js App Router frontend uses React and TypeScript to render the burning activity calendar, hotspot map, sensor comparison, and seasonal history. It sends filters and FIRMS CSV uploads to FastAPI and exports the returned daily results as CSV.
 
+The Three.js Earth uses NASA GIBS Blue Marble imagery and plots the selected day's FIRMS cells. Drag or use the arrow keys to rotate. **Locate area** centers the globe on the current area. Reduced-motion preferences disable auto-rotation, and a still Earth preview is available when WebGL is unavailable.
+
 ## Run locally
 
 Use Node.js 22.12 or later. Start the [FastAPI backend](https://github.com/Anuvesh07/NSVI_backend#readme), then run these commands from this repository root.
@@ -19,6 +21,7 @@ Run `npm run build` and `npm start` from this repository root to run the product
 
 - `app/` contains the Next.js route, layout, and page metadata. `explorer.tsx` owns the interactive UI and page state. `style.css` and `assets/` hold the styles, fonts, and basemaps.
 - `api.ts` handles archive requests and multipart uploads. `contract.ts` defines the types for the JSON response from FastAPI. `data.ts` handles calendar formatting, sensor display, and CSV export.
+- `earth.tsx` renders the globe. With the app running, `python test_earth.py http://127.0.0.1:3000` checks WebGL, keyboard rotation, reduced motion and the static fallback in Chromium.
 - `test_explorer.py` verifies the UI and API together. With both processes running, run `python test_explorer.py http://127.0.0.1:3000`. The test requires Python Playwright and Chromium. Supply `FIRE_ATLAS_CHROMIUM` to use a specific executable.
 
 The demo opens on mainland Portugal in August 2025. Compare both sensors, select another date or region, and export the month. For another area, upload one FIRMS CSV per instrument with at least one overlapping month. [NASA FIRMS resources](https://www.earthdata.nasa.gov/data/tools/firms#links)
