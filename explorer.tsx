@@ -97,7 +97,7 @@ function HotspotMap({ cells, bounds, imageBounds, date, region, layer }: {
   const image = imageBounds === portugalMap ? portugalImage.src : worldImage.src
   const radius = bounds === world ? 2.4 : 2.5
   const caption = [date ? shortDay(date) : 'No date', `${count(cells.length)} ${cells.length === 1 ? 'cell' : 'cells'}`]
-  return <section className="card map-card" aria-labelledby="map-title">
+  return <section className="card map-card" id="hotspot-map" tabIndex={-1} aria-labelledby="map-title">
     <div className="card-head"><h2 id="map-title"><Globe2 size={18} /> Hotspot map</h2><span className="micro map-date">{caption[0]} · {caption[1]}</span></div>
     <div className="map-stage">
       <svg className="map-svg" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio={bounds === portugalMap ? 'xMidYMid slice' : 'xMidYMid meet'} aria-label={`Hotspot map for ${region}, ${caption.join(', ')}`}>
@@ -148,6 +148,7 @@ export default function Explorer() {
   const [customBounds, setCustomBounds] = useState<Bounds>()
   const [dialog, setDialog] = useState<View>()
   const pending = useRef<AbortController | null>(null)
+  const [mapArrival, setMapArrival] = useState(false)
 
   async function refresh(bounds: Bounds, files: CsvFiles | undefined, accept: (data: Dataset) => void) {
     pending.current?.abort()
@@ -231,6 +232,15 @@ export default function Explorer() {
     setDate('')
   }
 
+  function showHotspots() {
+    const map = document.getElementById('hotspot-map')
+    if (!map) return
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    map.focus({ preventScroll: true })
+    map.scrollIntoView({ behavior: reduce ? 'instant' : 'smooth', block: 'center' })
+    if (!reduce) setMapArrival(true)
+  }
+
   function exportMonth() {
     downloadCsv(`fire-atlas-${month}.csv`, [
       ['date_utc', 'area', 'selected_layer', 'occupied_cells_5km', 'combined_cells', 'modis_cells', 'viirs_cells', 'modis_detections', 'viirs_detections', 'dataset', 'shared_cells', 'coverage'],
@@ -262,7 +272,7 @@ export default function Explorer() {
             <p>{layer} · 5 km grid</p>
           </div>}
         </div>
-        <Earth cells={selectedCells} layer={layer} focus={globeFocus} date={selected} area={regionName} />
+        <Earth cells={selectedCells} layer={layer} focus={globeFocus} date={selected} area={regionName} onShowHotspots={dataset && !outsideDemo ? showHotspots : undefined} />
       </div>
       <div className="toolbar">
         <div className="area-filter"><span className="micro filter-label">AREA OF INTEREST</span><div className="select-field"><MapPin size={16} /><select aria-label="Area of interest" value={customBounds ? 'custom' : region} disabled={loading} onChange={event => {
@@ -312,7 +322,7 @@ export default function Explorer() {
               <p className="coverage-note">Zero means no retained hotspots. Cloud and overpass coverage are unknown.</p>
             </div>
           </section>
-          <aside className="detail-stack">
+          <aside className={`detail-stack${mapArrival ? ' map-arrival' : ''}`} onAnimationEnd={() => setMapArrival(false)}>
             <HotspotMap key={`${selected}-${regionName}-${layer}-${bounds.join(',')}`} cells={selectedCells} bounds={mapBounds} imageBounds={imageBounds} date={selected} region={regionName} layer={layer} />
             <section className="card detail-card" aria-labelledby="detail-title">
               <div className="card-head"><h2 id="detail-title"><Satellite size={18} /> {longDay(selected)}</h2><span className="micro">DAY DETAIL</span></div>

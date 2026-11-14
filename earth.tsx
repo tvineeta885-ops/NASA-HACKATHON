@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Crosshair, Pause, Play } from 'lucide-react'
+import { ArrowDownRight, Crosshair, Pause, Play } from 'lucide-react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import type { Cell, Layer } from './contract'
@@ -10,7 +10,8 @@ import still from './assets/earth-still.webp'
 
 type Focus = { lat: number; lon: number }
 type PointSet = { cells: Cell[]; layer: Layer }
-type EarthProps = PointSet & { focus: Focus; date: string; area: string }
+type EarthProps = PointSet & { focus: Focus; date: string; area: string; onShowHotspots?: () => void }
+type Flight = { from: THREE.Spherical; to: THREE.Spherical; zoom: boolean; start?: number; arrived?: () => void }
 
 const europe = { lat: 34, lon: -24 }
 const surface = 1
@@ -41,9 +42,13 @@ export function EarthPlaceholder() {
   return <div className="earth-placeholder" aria-hidden="true" style={{ backgroundImage: `url(${still.src})` }} />
 }
 
-export default function Earth({ cells, layer, focus, date, area }: EarthProps) {
+export default function Earth({ cells, layer, focus, date, area, onShowHotspots }: EarthProps) {
   const container = useRef<HTMLDivElement>(null)
-  const sceneApi = useRef<{ drawPoints: (data: PointSet) => void; aim: (target: Focus) => void; animate: (active: boolean) => void } | null>(null)
+  const sceneApi = useRef<{
+    drawPoints: (data: PointSet) => void
+    flyTo: (target: Focus, zoom?: boolean, arrived?: () => void) => void
+    animate: (active: boolean) => void
+  } | null>(null)
   const [ready, setReady] = useState(false)
   const [failed, setFailed] = useState(false)
   const [playing, setPlaying] = useState(false)
@@ -71,7 +76,7 @@ export default function Earth({ cells, layer, focus, date, area }: EarthProps) {
     controls.enablePan = false
     controls.enableZoom = false
     controls.rotateSpeed = 0.52
-    controls.autoRotateSpeed = 0.42
+    controls.autoRotateSpeed = 0.8
     controls.minPolarAngle = 0.09
     controls.maxPolarAngle = Math.PI - 0.09
 
@@ -109,45 +114,77 @@ export default function Earth({ cells, layer, focus, date, area }: EarthProps) {
     scene.add(points)
 
     const preference = window.matchMedia('(prefers-reduced-motion: reduce)')
-    function updatePreference() {
-      setReducedMotion(preference.matches)
-      setPlaying(!preference.matches)
-    }
-    updatePreference()
-    preference.addEventListener('change', updatePreference)
-
     let disposed = false
     let intersecting = true
     let frame = 0
     let previous = 0
     let distance = 4.15
+    let flight: Flight | null = null
+    const cameraPath = new THREE.Spherical()
     const lightOffset = new THREE.Vector3()
     function draw(time: number) {
       frame = -1
-      if (controls.autoRotate) controls.update(previous ? Math.min(0.04, (time - previous) / 1000) : 0)
+      if (flight) {
+        flight.start ??= time
+        const progress = Math.min(1, (time - flight.start) / (flight.zoom ? 1050 : 720))
+        const ease = progress < 0.5 ? 4 * progress ** 3 : 1 - (-2 * progress + 2) ** 3 / 2
+        cameraPath.set(
+          THREE.MathUtils.lerp(flight.from.radius, flight.to.radius, ease),
+          THREE.MathUtils.lerp(flight.from.phi, flight.to.phi, ease),
+          THREE.MathUtils.lerp(flight.from.theta, flight.to.theta, ease),
+        )
+        camera.position.setFromSpherical(cameraPath)
+        controls.update()
+        if (progress === 1) finishFlight()
+      } else if (controls.autoRotate) {
+        controls.update(previous ? Math.min(0.04, (time - previous) / 1000) : 0)
+      }
       previous = controls.autoRotate ? time : 0
       lightOffset.set(-0.70, 0.58, 0.55).applyQuaternion(camera.quaternion)
       keyLight.position.copy(lightOffset)
       renderer.render(scene, camera)
       frame = 0
-      if (controls.autoRotate) schedule()
+      if (flight || controls.autoRotate) schedule()
     }
     function schedule() {
       if (!frame && !disposed && intersecting && !document.hidden) frame = requestAnimationFrame(draw)
     }
-    function aim(target: Focus) {
-      camera.position.copy(position(target.lat, target.lon, distance))
+    function finishFlight() {
+      if (!flight) return
+      const { to, arrived } = flight
+      flight = null
+      camera.position.setFromSpherical(to)
       controls.update()
       schedule()
+      arrived?.()
     }
     function stopSpin() {
       controls.autoRotate = false
       setPlaying(false)
     }
+    function flyTo(target: Focus, zoom = false, arrived?: () => void) {
+      stopSpin()
+      const from = new THREE.Spherical().setFromVector3(camera.position)
+      const to = new THREE.Spherical().setFromVector3(position(target.lat, target.lon, zoom ? 1.56 : distance))
+      to.phi = THREE.MathUtils.clamp(to.phi, controls.minPolarAngle, controls.maxPolarAngle)
+      to.theta = from.theta + THREE.MathUtils.euclideanModulo(to.theta - from.theta + Math.PI, 2 * Math.PI) - Math.PI
+      flight = { from, to, zoom, arrived }
+      if (preference.matches) finishFlight()
+      else schedule()
+    }
+    function interrupt() {
+      flight = null
+      stopSpin()
+    }
+    function updatePreference() {
+      setReducedMotion(preference.matches)
+      setPlaying(!preference.matches)
+      if (preference.matches) finishFlight()
+    }
     function keydown(event: KeyboardEvent) {
       if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return
       event.preventDefault()
-      stopSpin()
+      interrupt()
       const next = new THREE.Spherical().setFromVector3(camera.position)
       if (event.key === 'ArrowLeft') next.theta -= 0.13
       if (event.key === 'ArrowRight') next.theta += 0.13
@@ -158,14 +195,20 @@ export default function Earth({ cells, layer, focus, date, area }: EarthProps) {
       schedule()
     }
 
-    aim(europe)
+    camera.position.copy(position(europe.lat, europe.lon, distance))
+    controls.update()
+    updatePreference()
+    preference.addEventListener('change', updatePreference)
     const resize = new ResizeObserver(([entry]) => {
       const { width, height } = entry.contentRect
       if (!width || !height) return
       camera.aspect = width / height
       camera.updateProjectionMatrix()
+      if (!flight && camera.position.length() >= distance - 0.05) {
+        camera.position.setLength(Math.max(4.15, 4.15 / camera.aspect))
+      }
       distance = Math.max(4.15, 4.15 / camera.aspect)
-      camera.position.setLength(distance)
+      if (flight && !flight.zoom) flight.to.radius = distance
       renderer.setSize(width, height, false)
       controls.update()
       schedule()
@@ -178,9 +221,9 @@ export default function Earth({ cells, layer, focus, date, area }: EarthProps) {
     visibility.observe(element)
 
     controls.addEventListener('change', schedule)
-    controls.addEventListener('start', stopSpin)
+    controls.addEventListener('start', interrupt)
     canvas.addEventListener('keydown', keydown)
-    function contextLost(event: Event) { event.preventDefault(); setFailed(true); setReady(false) }
+    function contextLost(event: Event) { event.preventDefault(); finishFlight(); interrupt(); setFailed(true); setReady(false) }
     canvas.addEventListener('webglcontextlost', contextLost)
     document.addEventListener('visibilitychange', schedule)
 
@@ -195,8 +238,12 @@ export default function Earth({ cells, layer, focus, date, area }: EarthProps) {
     texture.anisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 4)
 
     sceneApi.current = {
-      aim,
-      animate(active) { controls.autoRotate = active; schedule() },
+      flyTo,
+      animate(active) {
+        if (active) flight = null
+        controls.autoRotate = active
+        schedule()
+      },
       drawPoints({ cells: values, layer: sensor }) {
         const coordinates: number[] = []
         const rgb: number[] = []
@@ -234,19 +281,22 @@ export default function Earth({ cells, layer, focus, date, area }: EarthProps) {
   useEffect(() => sceneApi.current?.drawPoints({ cells, layer }), [cells, layer])
   useEffect(() => sceneApi.current?.animate(playing && !failed), [failed, playing])
 
-  function focusArea() {
-    setPlaying(false)
-    sceneApi.current?.aim({ lat: focus.lat, lon: focus.lon })
+  function zoomToHotspots() {
+    if (ready && !failed) sceneApi.current?.flyTo(focus, true, onShowHotspots)
+    else onShowHotspots?.()
   }
 
   return <div className="earth-stage" data-renderer={failed ? 'fallback' : ready ? 'webgl' : 'loading'} data-points={cells.length}>
     {(!ready || failed) && <EarthPlaceholder />}
     <div className="earth-canvas" ref={container} data-ready={ready && !failed} />
     <div className="earth-coordinate"><Crosshair size={14} /><span>{date} UTC</span><span>{cells.length} occupied cells</span></div>
-    {ready && !failed && <div className="earth-controls">
-      <button type="button" onClick={focusArea} title={`Center on ${area}`}><Crosshair size={15} /> Locate area</button>
-      {!reducedMotion && <button type="button" aria-label={playing ? 'Pause Earth rotation' : 'Play Earth rotation'} title={playing ? 'Pause rotation' : 'Play rotation'} onClick={() => setPlaying(value => !value)}>{playing ? <Pause size={15} /> : <Play size={15} />}</button>}
-    </div>}
+    <div className="earth-controls">
+      {ready && !failed && <>
+        <button type="button" onClick={() => sceneApi.current?.flyTo(focus)} title={`Center on ${area}`}><Crosshair size={15} /> Locate area</button>
+        {!reducedMotion && <button type="button" aria-label={playing ? 'Pause Earth rotation' : 'Play Earth rotation'} title={playing ? 'Pause rotation' : 'Play rotation'} onClick={() => setPlaying(value => !value)}>{playing ? <Pause size={15} /> : <Play size={15} />}</button>}
+      </>}
+      {onShowHotspots && <button type="button" className="earth-map-link" onClick={zoomToHotspots}>Zoom to hotspots <ArrowDownRight size={16} /></button>}
+    </div>
     {failed && <span className="earth-fallback-note">Earth preview · see regional map for hotspots</span>}
   </div>
 }

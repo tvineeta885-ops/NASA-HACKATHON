@@ -309,8 +309,14 @@ svg {
 }
 .earth-controls button:hover { border-color: var(--green); }
 .earth-controls svg { color: var(--green); }
+.earth-controls .earth-map-link {
+  border-color: #9a655a;
+  background: #4a3136;
+  color: #ffe5d9;
+}
+.earth-map-link svg { color: var(--accent); }
 .earth-fallback-note {
-  right: 15px;
+  left: 15px;
   bottom: 17px;
   color: var(--muted);
   font-size: 11px;
@@ -674,6 +680,14 @@ svg {
   background: #142332;
   isolation: isolate;
   overflow: hidden;
+}
+.map-card:focus-visible { outline: 2px solid var(--green); outline-offset: 4px; }
+@media (prefers-reduced-motion: no-preference) {
+  .map-arrival .map-card { animation: map-arrival 1.35s ease-out; }
+  @keyframes map-arrival {
+    0%, 36% { border-color: var(--accent); box-shadow: 0 0 0 4px #ff966f57; }
+    100% { border-color: var(--line); box-shadow: 0 0 0 8px #ff966f00; }
+  }
 }
 .map-svg {
   width: 100%;
@@ -1164,6 +1178,7 @@ footer a:hover,.map-credit:hover {
   .earth-stage::after { width: min(86%,372px); }
   .earth-coordinate { top: 8px; right: 6px; font-size: 9px; }
   .earth-controls { bottom: 8px; right: 4px; }
+  .earth-fallback-note { bottom: 49px; left: 6px; }
   .toolbar {
     flex-wrap: wrap;
     gap: 9px;
