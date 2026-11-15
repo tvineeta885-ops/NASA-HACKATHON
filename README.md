@@ -2,7 +2,9 @@
 
 The Next.js App Router frontend uses React and TypeScript to render the burning activity calendar, hotspot map, sensor comparison, and seasonal history. It sends filters and FIRMS CSV uploads to FastAPI and exports the returned daily results as CSV.
 
-The Three.js Earth uses NASA GIBS Blue Marble imagery and plots the selected day's FIRMS cells. It rotates on load. Drag or use the arrow keys to take control, or use Play and Pause. **Locate area** smoothly turns Earth toward the selected area. **Zoom to hotspots** flies in and brings the regional map into focus. Reduced-motion preferences skip the flight and auto-rotation. A still Earth preview is available when WebGL is unavailable.
+The Three.js scene uses NASA GIBS Blue Marble imagery and plots the selected day's FIRMS cells. A visible Sun lights the day side. The cloud layer drifts as Earth turns. This is an illustrative lighting scene; the Sun and clouds do not represent conditions on the selected date. Drag or use the arrow keys to take control, or use Play and Pause. **Locate area** centers the selected region. **Zoom to hotspots** flies in and brings the regional map into focus. Reduced-motion preferences skip auto-rotation and flights. A still Earth preview is available when WebGL is unavailable.
+
+Night lights and the cloud mask are resized from the [Three.js Earth example](https://threejs.org/examples/webgpu_tsl_earth.html). The textures come from [Solar System Scope](https://www.solarsystemscope.com/textures/) under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Fire Atlas extracts the cloud channel from the original packed texture.
 
 ## Run locally
 
