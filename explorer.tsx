@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import {
   Activity, ArrowDownToLine, ArrowDownRight, ArrowUpRight, CalendarDays, ChevronDown, ChevronLeft,
-  ChevronRight, Database, Flame, Globe2, Layers, MapPin, Maximize, Minus, Plus,
+  ChevronRight, Database, Flame, Globe2, Layers, MapPin, Maximize, Minus, Pause, Play, Plus,
   Satellite, Upload, X,
 } from 'lucide-react'
 import {
@@ -144,6 +144,7 @@ export default function Explorer() {
   const [notice, setNotice] = useState('')
   const [month, setMonth] = useState(defaultMonth)
   const [date, setDate] = useState('')
+  const [playing, setPlaying] = useState(false)
   const [layer, setLayer] = useState<Layer>('Combined')
   const [useHarmonized, setUseHarmonized] = useState(true)
   const [region, setRegion] = useState(0)
@@ -158,6 +159,7 @@ export default function Explorer() {
     pending.current = operation
     setLoadError('')
     setLoading(true)
+    setPlaying(false)
     try {
       const data = await loadDataset(bounds, files, operation.signal, recent)
       if (operation.signal.aborted) return
@@ -237,17 +239,33 @@ export default function Explorer() {
   const change = comparison && comparison.median > 0 ? (total / comparison.median - 1) * 100 : null
   const leading = (new Date(`${month}-01T00:00:00Z`).getUTCDay() + 6) % 7
   const trailing = (7 - (leading + calendar.length) % 7) % 7
+  const playbackIndex = Math.max(0, listedDates.indexOf(selected))
+  const nextPlaybackDate = listedDates[playbackIndex + 1] ?? listedDates[0]
+  const canPlay = Boolean(dataset) && !outsideDemo && !loading && listedDates.length > 1
+
+  useEffect(() => {
+    if (!playing || !canPlay || dialog) return
+    const timer = window.setInterval(() => {
+      if (!document.hidden) setDate(nextPlaybackDate)
+    }, 1400)
+    return () => window.clearInterval(timer)
+  }, [playing, canPlay, dialog, nextPlaybackDate])
+
+  function chooseDay(value: string) {
+    setPlaying(false)
+    setDate(value)
+  }
 
   function chooseMonth(value: string) {
     setMonth(value)
-    setDate('')
+    chooseDay('')
   }
 
   function chooseLayer(value: Layer) {
     setUseHarmonized(false)
     setLayer(value)
     if (dataset && !dataset.months.includes(month)) chooseMonth(dataset.months[0])
-    else setDate('')
+    else chooseDay('')
   }
 
   function loadRecent() {
@@ -323,7 +341,7 @@ export default function Explorer() {
           {customBounds && <option value="custom">Custom area</option>}
         </select><ChevronDown size={14} /></div><AreaPicker bounds={bounds} disabled={loading} onApply={value => chooseArea(region, value)} /></div>
         <div className="layer-filter"><span className="micro filter-label">ACTIVITY SERIES</span><div className="segmented" role="group" aria-label="Activity series">
-          {dataset?.harmonized && <button aria-pressed={Boolean(harmonized)} onClick={() => { setUseHarmonized(true); setDate('') }}>Harmonized</button>}
+          {dataset?.harmonized && <button aria-pressed={Boolean(harmonized)} onClick={() => { setUseHarmonized(true); chooseDay('') }}>Harmonized</button>}
           {layers.map(item => <button key={item} aria-pressed={!harmonized && layer === item} onClick={() => chooseLayer(item)}>{item === 'Combined' && <Layers size={14} />}{item}</button>)}
         </div></div>
         <button className="button export" aria-label={recent ? 'Export snapshot' : 'Export month'} disabled={!dataset || loading || outsideDemo} onClick={exportMonth}><ArrowDownToLine size={16} /> {recent ? 'Export snapshot' : 'Export month'}</button>
@@ -343,7 +361,7 @@ export default function Explorer() {
       {dataset && !outsideDemo && <>
         <section className="metrics" aria-label="Month summary">
           <article className="metric"><div className="metric-label"><CalendarDays size={16} /> Days with detections</div><div className="metric-value">{calendarCounts.filter(Boolean).length}<small> / {listedDates.length}</small></div><div className="metric-note">{recent ? 'UTC dates in the snapshot' : 'UTC days this month'}</div></article>
-          <article className="metric"><div className="metric-label"><Flame size={16} /> Peak activity</div><div className="metric-value">{count(peak)}<small>{harmonized ? ' equiv.' : ' cells'}</small></div><div className="metric-note">{peak ? <button className="text-link" onClick={() => setDate(peakDay)}>{shortDay(peakDay)} <ArrowUpRight size={12} /></button> : 'No detected cells'}</div></article>
+          <article className="metric"><div className="metric-label"><Flame size={16} /> Peak activity</div><div className="metric-value">{count(peak)}<small>{harmonized ? ' equiv.' : ' cells'}</small></div><div className="metric-note">{peak ? <button className="text-link" onClick={() => chooseDay(peakDay)}>{shortDay(peakDay)} <ArrowUpRight size={12} /></button> : 'No detected cells'}</div></article>
           {!recent && <article className={`metric ${comparison?.above ? 'anomaly-metric' : ''}`}><div className="metric-label"><Activity size={16} /> vs. historical median</div><div className="metric-value">{change === null ? '—' : `${change >= 0 ? '+' : '−'}${count(Math.round(Math.abs(change)))}%`}{change !== null && (change >= 0 ? <ArrowUpRight size={22} /> : <ArrowDownRight size={22} />)}</div><div className="metric-note">{comparison ? `${count(comparison.median)} cell-days · above ${comparison.prior_below} of ${comparison.years} prior years` : importedFiles ? 'Imported coverage unverified' : 'Needs 3 prior archive years'}</div></article>}
         </section>
         <div className="workspace">
@@ -359,12 +377,29 @@ export default function Explorer() {
                 <button className="icon-button" aria-label="Previous month" disabled={index <= 0} onClick={() => chooseMonth(availableMonths[index - 1])}><ChevronLeft size={17} /></button>
                 <button className="icon-button" aria-label="Next month" disabled={index >= availableMonths.length - 1} onClick={() => chooseMonth(availableMonths[index + 1])}><ChevronRight size={17} /></button>
               </div></div>
+              <div className="day-playback">
+                <button type="button" className="button playback-toggle" data-playing={playing} disabled={!canPlay} onClick={() => setPlaying(value => !value)}>
+                  {playing ? <Pause size={14} aria-hidden="true" /> : <Play size={14} aria-hidden="true" />}
+                  {playing ? 'Pause days' : 'Play days'}
+                </button>
+                <input
+                  type="range"
+                  min={0}
+                  max={Math.max(0, listedDates.length - 1)}
+                  value={playbackIndex}
+                  disabled={!canPlay}
+                  aria-label="Observation date"
+                  aria-valuetext={longDay(selected)}
+                  onChange={event => chooseDay(listedDates[Number(event.target.value)])}
+                />
+                <span className="micro">{shortDay(selected)}</span>
+              </div>
               <div className="calendar-grid">
                 {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(item => <div className="weekday" key={item}>{item}</div>)}
                 {Array.from({ length: leading }, (_, i) => <div className="pad-day" key={`before-${i}`} />)}
                 {calendar.map((day, i) => {
                   const available = !recent || recent.dates.includes(day)
-                  return <button key={day} className={`day level-${level(calendarCounts[i])}`} disabled={!available} aria-pressed={selected === day} aria-label={`${shortDay(day)}, ${available ? (harmonized ? `${count(calendarCounts[i])} equivalent cells` : `${calendarCounts[i]} occupied cells`) : 'outside the snapshot'}`} onClick={() => setDate(day)}>
+                  return <button key={day} className={`day level-${level(calendarCounts[i])}`} disabled={!available} aria-pressed={selected === day} aria-label={`${shortDay(day)}, ${available ? (harmonized ? `${count(calendarCounts[i])} equivalent cells` : `${calendarCounts[i]} occupied cells`) : 'outside the snapshot'}`} onClick={() => chooseDay(day)}>
                   <span>{i + 1}</span><strong>{available ? count(calendarCounts[i]) : '—'}</strong>
                 </button>})}
                 {Array.from({ length: trailing }, (_, i) => <div className="pad-day" key={`after-${i}`} />)}
