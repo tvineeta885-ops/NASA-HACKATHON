@@ -216,7 +216,7 @@ svg { flex: none; vertical-align: middle; }
 .observation-heading p { font: 400 clamp(46px, 5vw, 80px)/.94 var(--display); }
 .observation-total { text-align: right; }
 .observation-total strong { display: block; font: 400 clamp(36px, 5vw, 62px)/.9 var(--display); }
-.observation-total span { display: block; margin-top: 5px; color: var(--muted); font: 10px/1.3 var(--mono); }
+.observation-total > span { display: block; margin-top: 5px; color: var(--muted); font: 10px/1.3 var(--mono); }
 .toolbar { display: flex; flex-wrap: wrap; align-items: end; gap: 14px 22px; padding-block: 15px; border-bottom: 1px solid var(--rule); }
 .area-filter, .layer-filter { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 5px; }
 .filter-label { grid-column: 1/-1; color: var(--muted); }
@@ -263,6 +263,11 @@ svg { flex: none; vertical-align: middle; }
 .metric-value { display: flex; align-items: baseline; gap: 5px; margin-top: 6px; font: 400 46px/.94 var(--display); font-variant-numeric: tabular-nums; }
 .metric-value small, .metric-note { color: var(--muted); font: 11px/1.4 var(--mono); }
 .metric-note { margin-top: 6px; }
+.reading { display: inline-block; animation: reading-update 360ms ease-out both; }
+@keyframes reading-update {
+  from { opacity: .62; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 .anomaly-metric .metric-value, .metric-label svg { color: var(--ember); }
 .text-link { display: inline-flex; align-items: center; gap: 4px; text-decoration: none; }
 .text-link:hover { text-decoration: underline; }
@@ -325,6 +330,11 @@ svg { flex: none; vertical-align: middle; }
 .map-label { fill: #f4ebd9; stroke: #252017; stroke-width: 1.4px; paint-order: stroke; font: 9px var(--mono); }
 .map-dot { opacity: .9; stroke: #271710; stroke-width: .55px; cursor: pointer; }
 .map-dot:hover, .map-dot.selected-dot { stroke: #fff7e9; stroke-width: 1.7px; }
+.hotspot-layer { animation: hotspot-update 560ms ease-out both; }
+@keyframes hotspot-update {
+  from { opacity: .22; }
+  to { opacity: 1; }
+}
 .modis { fill: #ffc37f; background: #ffc37f; }
 .viirs { fill: #ec7045; background: #ec7045; }
 .shared { fill: #fff2c9; background: #fff2c9; }
@@ -404,7 +414,7 @@ footer a:hover { color: var(--ember); text-decoration: underline; }
   .workbench { padding-top: 25px; }
   .observation-heading { gap: 8px; padding-bottom: 13px; }
   .observation-heading p { font-size: 40px; }
-  .observation-total span { max-width: 84px; }
+  .observation-total > span { max-width: 84px; }
   .workspace { grid-template-columns: 1fr; }
   .metric { padding-inline: 7px; }
   .metric-value { font-size: 33px; }
@@ -419,5 +429,5 @@ footer a:hover { color: var(--ember); text-decoration: underline; }
   .observation-heading p { font-size: 36px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .map-arrival .map-card { animation: none; }
+  .map-arrival .map-card, .reading, .hotspot-layer { animation: none; }
 }

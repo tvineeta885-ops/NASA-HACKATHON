@@ -31,6 +31,10 @@ const isoMonth = (month: string) => format(`${month}-01`, { month: 'long', year:
 const shortDay = (date: string) => format(date, { month: 'short', day: 'numeric' })
 const longDay = (date: string) => format(date, { weekday: 'long', month: 'long', day: 'numeric' })
 
+function Reading({ value }: { value: string | number }) {
+  return <span key={value} className="reading">{value}</span>
+}
+
 function Modal({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null)
   useEffect(() => {
@@ -87,7 +91,9 @@ function HotspotMap({ cells, bounds, imageBounds, date, region, layer }: {
   cells: Cell[]; bounds: Bounds; imageBounds: Bounds; date: string; region: string; layer: Layer
 }) {
   const [zoom, setZoom] = useState(1)
-  const [selected, setSelected] = useState<Cell | null>(null)
+  const [picked, setSelected] = useState<Cell | null>(null)
+  const selected = picked && cells.includes(picked) ? picked : null
+  useEffect(() => setSelected(null), [date])
   const [west, south, east, north] = bounds
   const mid = (north + south) / 2 * Math.PI / 180
   const height = 350
@@ -99,7 +105,7 @@ function HotspotMap({ cells, bounds, imageBounds, date, region, layer }: {
   const radius = bounds === world ? 2.4 : 2.5
   const caption = [date ? shortDay(date) : 'No date', `${count(cells.length)} ${cells.length === 1 ? 'cell' : 'cells'}`]
   return <section className="card map-card" id="hotspot-map" tabIndex={-1} aria-labelledby="map-title">
-    <div className="card-head"><h2 id="map-title"><Globe2 size={18} /> Hotspot map</h2><span className="micro map-date">{caption[0]} · {caption[1]}</span></div>
+    <div className="card-head"><h2 id="map-title"><Globe2 size={18} /> Hotspot map</h2><span className="micro map-date"><Reading value={caption.join(' · ')} /></span></div>
     <div className="map-stage">
       <svg className="map-svg" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio={bounds === portugalMap ? 'xMidYMid slice' : 'xMidYMid meet'} aria-label={`Hotspot map for ${region}, ${caption.join(', ')}`}>
         <defs><pattern id="map-grid" width={width / 8} height={height / 6} patternUnits="userSpaceOnUse"><path d={`M ${width / 8} 0 H 0 V ${height / 6}`} fill="none" stroke="#e8e7c9" strokeOpacity=".12" strokeWidth=".6" /></pattern></defs>
@@ -110,14 +116,16 @@ function HotspotMap({ cells, bounds, imageBounds, date, region, layer }: {
             const [x, y] = project(lon, lat)
             return <text key={label} className="map-label" x={x} y={y}>{label}</text>
           })}
-          {cells.map(cell => {
-            const [x, y] = project(cell.lon, cell.lat)
-            const both = cell.MODIS > 0 && cell.VIIRS > 0
-            const type = layer === 'Combined' ? (both ? 'shared' : cell.MODIS ? 'modis' : 'viirs') : layer.toLowerCase()
-            return <circle key={`${cell.lat}/${cell.lon}`} className={`map-dot ${type} ${selected === cell ? 'selected-dot' : ''}`} cx={x} cy={y} r={radius / Math.sqrt(zoom)} onClick={() => setSelected(selected === cell ? null : cell)}>
-              <title>{`${cell.lat.toFixed(3)}, ${cell.lon.toFixed(3)}. MODIS ${cell.MODIS}, VIIRS ${cell.VIIRS}`}</title>
-            </circle>
-          })}
+          <g key={date} className="hotspot-layer">
+            {cells.map(cell => {
+              const [x, y] = project(cell.lon, cell.lat)
+              const both = cell.MODIS > 0 && cell.VIIRS > 0
+              const type = layer === 'Combined' ? (both ? 'shared' : cell.MODIS ? 'modis' : 'viirs') : layer.toLowerCase()
+              return <circle key={`${cell.lat}/${cell.lon}`} className={`map-dot ${type} ${selected === cell ? 'selected-dot' : ''}`} cx={x} cy={y} r={radius / Math.sqrt(zoom)} onClick={() => setSelected(selected === cell ? null : cell)}>
+                <title>{`${cell.lat.toFixed(3)}, ${cell.lon.toFixed(3)}. MODIS ${cell.MODIS}, VIIRS ${cell.VIIRS}`}</title>
+              </circle>
+            })}
+          </g>
         </g>
       </svg>
       <div className="map-north" aria-hidden="true"><span>▲</span>N</div>
@@ -131,8 +139,8 @@ function HotspotMap({ cells, bounds, imageBounds, date, region, layer }: {
 
 function SensorRows({ day }: { day: Day }) {
   return <div className="sensor-rows">
-    <div><i className="dot modis" /><span><b>MODIS</b><small>Terra / Aqua · 1 km</small></span><strong>{count(day.MODIS)}</strong></div>
-    <div><i className="dot viirs" /><span><b>VIIRS</b><small>375 m active fire product</small></span><strong>{count(day.VIIRS)}</strong></div>
+    <div><i className="dot modis" /><span><b>MODIS</b><small>Terra / Aqua · 1 km</small></span><strong><Reading value={count(day.MODIS)} /></strong></div>
+    <div><i className="dot viirs" /><span><b>VIIRS</b><small>375 m active fire product</small></span><strong><Reading value={count(day.VIIRS)} /></strong></div>
   </div>
 }
 
@@ -325,7 +333,7 @@ export default function Explorer() {
       </div>
       <div className="workbench">
       <div className="observation-heading"><div><span className="micro">{regionName}</span><p>Burning activity</p></div>
-        {dataset && !outsideDemo && <div className="observation-total"><strong className="metric-value">{count(total)}</strong><span>{harmonized ? 'MODIS-equivalent' : 'Occupied'} cell-days</span></div>}
+        {dataset && !outsideDemo && <div className="observation-total"><strong className="metric-value"><Reading value={count(total)} /></strong><span>{harmonized ? 'MODIS-equivalent' : 'Occupied'} cell-days</span></div>}
       </div>
       <div className="toolbar">
         <div className="layer-filter"><span className="micro filter-label">NASA FIRMS SOURCE</span><div className="segmented" role="group" aria-label="Data source">
@@ -360,9 +368,9 @@ export default function Explorer() {
       {loading && <p className="status" role="status">{dataset ? 'Updating observations…' : 'Loading NASA FIRMS archive…'}</p>}
       {dataset && !outsideDemo && <>
         <section className="metrics" aria-label="Month summary">
-          <article className="metric"><div className="metric-label"><CalendarDays size={16} /> Days with detections</div><div className="metric-value">{calendarCounts.filter(Boolean).length}<small> / {listedDates.length}</small></div><div className="metric-note">{recent ? 'UTC dates in the snapshot' : 'UTC days this month'}</div></article>
-          <article className="metric"><div className="metric-label"><Flame size={16} /> Peak activity</div><div className="metric-value">{count(peak)}<small>{harmonized ? ' equiv.' : ' cells'}</small></div><div className="metric-note">{peak ? <button className="text-link" onClick={() => chooseDay(peakDay)}>{shortDay(peakDay)} <ArrowUpRight size={12} /></button> : 'No detected cells'}</div></article>
-          {!recent && <article className={`metric ${comparison?.above ? 'anomaly-metric' : ''}`}><div className="metric-label"><Activity size={16} /> vs. historical median</div><div className="metric-value">{change === null ? '—' : `${change >= 0 ? '+' : '−'}${count(Math.round(Math.abs(change)))}%`}{change !== null && (change >= 0 ? <ArrowUpRight size={22} /> : <ArrowDownRight size={22} />)}</div><div className="metric-note">{comparison ? `${count(comparison.median)} cell-days · above ${comparison.prior_below} of ${comparison.years} prior years` : importedFiles ? 'Imported coverage unverified' : 'Needs 3 prior archive years'}</div></article>}
+          <article className="metric"><div className="metric-label"><CalendarDays size={16} /> Days with detections</div><div className="metric-value"><Reading value={calendarCounts.filter(Boolean).length} /><small> / {listedDates.length}</small></div><div className="metric-note">{recent ? 'UTC dates in the snapshot' : 'UTC days this month'}</div></article>
+          <article className="metric"><div className="metric-label"><Flame size={16} /> Peak activity</div><div className="metric-value"><Reading value={count(peak)} /><small>{harmonized ? ' equiv.' : ' cells'}</small></div><div className="metric-note">{peak ? <button className="text-link" onClick={() => chooseDay(peakDay)}>{shortDay(peakDay)} <ArrowUpRight size={12} /></button> : 'No detected cells'}</div></article>
+          {!recent && <article className={`metric ${comparison?.above ? 'anomaly-metric' : ''}`}><div className="metric-label"><Activity size={16} /> vs. historical median</div><div className="metric-value"><Reading value={change === null ? '—' : `${change >= 0 ? '+' : '−'}${count(Math.round(Math.abs(change)))}%`} />{change !== null && (change >= 0 ? <ArrowUpRight size={22} /> : <ArrowDownRight size={22} />)}</div><div className="metric-note">{comparison ? `${count(comparison.median)} cell-days · above ${comparison.prior_below} of ${comparison.years} prior years` : importedFiles ? 'Imported coverage unverified' : 'Needs 3 prior archive years'}</div></article>}
         </section>
         <div className="workspace">
           <section className="card calendar-card" aria-labelledby="calendar-title">
@@ -392,7 +400,7 @@ export default function Explorer() {
                   aria-valuetext={longDay(selected)}
                   onChange={event => chooseDay(listedDates[Number(event.target.value)])}
                 />
-                <span className="micro">{shortDay(selected)}</span>
+                <span className="micro"><Reading value={shortDay(selected)} /></span>
               </div>
               <div className="calendar-grid">
                 {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(item => <div className="weekday" key={item}>{item}</div>)}
@@ -408,13 +416,15 @@ export default function Explorer() {
               <p className="coverage-note">Zero means no retained hotspots. Cloud and overpass coverage are unknown.</p>
             </div>
           </section>
-          <aside className={`detail-stack${mapArrival ? ' map-arrival' : ''}`} onAnimationEnd={() => setMapArrival(false)}>
-            <HotspotMap key={`${selected}-${regionName}-${plottedLayer}-${bounds.join(',')}`} cells={selectedCells} bounds={mapBounds} imageBounds={imageBounds} date={selected} region={regionName} layer={plottedLayer} />
+          <aside className={`detail-stack${mapArrival ? ' map-arrival' : ''}`} onAnimationEnd={event => {
+            if (event.animationName === 'map-arrival') setMapArrival(false)
+          }}>
+            <HotspotMap key={`${regionName}-${plottedLayer}-${bounds.join(',')}`} cells={selectedCells} bounds={mapBounds} imageBounds={imageBounds} date={selected} region={regionName} layer={plottedLayer} />
             <section className="card detail-card" aria-labelledby="detail-title">
               <div className="card-head"><h2 id="detail-title"><Satellite size={18} /> {longDay(selected)}</h2><span className="micro">DAY DETAIL</span></div>
-              {harmonized ? <div className="detail-foot"><span>{plottedLayer} observed cells</span><strong>{count(selectedCells.length)}</strong></div> : <>
+              {harmonized ? <div className="detail-foot"><span>{plottedLayer} observed cells</span><strong><Reading value={count(selectedCells.length)} /></strong></div> : <>
                 <SensorRows day={selectedDay} />
-                <div className="detail-foot"><span>Shared 5 km cells</span><strong>{count(selectedDay.cells.filter(cell => cell.MODIS && cell.VIIRS).length)}</strong></div>
+                <div className="detail-foot"><span>Shared 5 km cells</span><strong><Reading value={count(selectedDay.cells.filter(cell => cell.MODIS && cell.VIIRS).length)} /></strong></div>
               </>}
               <div className="detail-foot"><a href={`https://worldview.earthdata.nasa.gov/?t=${selected}-T12:00:00Z&v=${mapBounds.join(',')}`} target="_blank" rel="noreferrer">Check imagery in NASA Worldview <ArrowUpRight size={13} /></a></div>
             </section>
