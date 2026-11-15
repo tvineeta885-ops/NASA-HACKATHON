@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import {
   Activity, ArrowDownToLine, ArrowDownRight, ArrowUpRight, CalendarDays, ChevronDown, ChevronLeft,
-  ChevronRight, CircleHelp, Database, Flame, Globe2, Layers, MapPin, Maximize, Minus, Plus,
+  ChevronRight, Database, Flame, Globe2, Layers, MapPin, Maximize, Minus, Plus,
   Satellite, Upload, X,
 } from 'lucide-react'
 import {
@@ -291,23 +291,23 @@ export default function Explorer() {
 
   return <>
     <header className="topbar"><div className="top-inner">
-      <Link href="/" className="identity" aria-label="Fire Atlas home"><span className="brand-icon"><Flame size={22} strokeWidth={1.5} /></span><span>Fire Atlas</span></Link>
-      <nav aria-label="Main navigation" className="navigation"><a className="current" href="#calendar-title"><CalendarDays size={16} /> Calendar</a><button onClick={() => setDialog('compare')} disabled={!dataset || outsideDemo || !dataset.months.includes(month)}><Layers size={16} /> Compare sensors</button><button onClick={() => setDialog('method')}><CircleHelp size={16} /> Methodology</button></nav>
-      <button className="button import-button" onClick={() => setDialog('import')}><Upload size={15} /><span>Import CSV</span></button>
+      <Link href="/" className="identity" aria-label="Fire Atlas home"><Flame size={20} strokeWidth={1.6} /><span>FIRE ATLAS</span></Link>
+      <nav aria-label="Main navigation" className="navigation"><a href="#calendar-title">Calendar</a><button onClick={() => setDialog('compare')} disabled={!dataset || outsideDemo || !dataset.months.includes(month)}>Compare sensors</button><button onClick={() => setDialog('method')}>Methodology</button></nav>
+      <button className="button import-button" onClick={() => setDialog('import')}>Import CSV <Upload size={14} /></button>
     </div></header>
     <main className="shell" id="explorer">
       <div className="hero">
         <div className="hero-copy">
           <div className="archive-badge">{recent ? 'NASA FIRMS · Near real-time' : importedFiles ? 'Imported FIRMS CSV' : archiveFirst ? `NASA FIRMS · ${archiveFirst}–${archiveLast}` : 'NASA FIRMS standard processing'}</div>
-          <h1>Fire <em>atlas.</em></h1>
-          <p>Explore when and where MODIS and VIIRS detected burning activity.</p>
-          {dataset && !outsideDemo && <div className="hero-record">
-            <div className="hero-period"><MapPin size={14} /> {regionName}<span>{isoMonth(month)}</span></div>
-            <div className="hero-stat"><strong className="metric-value">{count(total)}</strong><span>{harmonized ? 'equivalent' : 'occupied'}<br /> cell-days</span></div>
-            <p>{harmonized ? 'MODIS-equivalent · 5 km grid' : `${layer} · 5 km grid`}</p>
-          </div>}
+          <h1>Fire from <br />orbit<span>.</span></h1>
+          <p>Follow burning activity through the MODIS and VIIRS satellite record.</p>
+          <a href="#calendar-title" className="hero-link">Explore the calendar <ArrowDownRight size={17} /></a>
         </div>
         <Earth cells={selectedCells} layer={plottedLayer} focus={globeFocus} date={selected} area={regionName} onShowHotspots={dataset && !outsideDemo ? showHotspots : undefined} />
+      </div>
+      <div className="workbench">
+      <div className="observation-heading"><div><span className="micro">{regionName}</span><p>Burning activity</p></div>
+        {dataset && !outsideDemo && <div className="observation-total"><strong className="metric-value">{count(total)}</strong><span>{harmonized ? 'MODIS-equivalent' : 'Occupied'} cell-days</span></div>}
       </div>
       <div className="toolbar">
         <div className="layer-filter"><span className="micro filter-label">NASA FIRMS SOURCE</span><div className="segmented" role="group" aria-label="Data source">
@@ -393,6 +393,7 @@ export default function Explorer() {
         </section>}
       </>}
       <footer><span><Database size={14} /> Data <a href={recent ? firms : archive} target="_blank" rel="noreferrer">NASA FIRMS</a><i /> {recent ? 'Near real-time UTC detections' : 'Historical UTC detections'}</span><a href={challenge} target="_blank" rel="noreferrer">NASA Space Apps Challenge 2026 <ArrowUpRight size={13} /></a></footer>
+      </div>
     </main>
     {dialog === 'import' && <Modal title="Import FIRMS observations" onClose={() => setDialog(undefined)}><ImportFiles onLoad={(next, files) => {
       pending.current?.abort()

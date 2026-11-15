@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description: 'Explore historical burning activity from NASA FIRMS MODIS and VIIRS observations.',
 }
 
-export const viewport: Viewport = { themeColor: '#101923' }
+export const viewport: Viewport = { themeColor: '#090908' }
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return <html lang="en"><body>{children}</body></html>
