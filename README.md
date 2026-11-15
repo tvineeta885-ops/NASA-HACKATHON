@@ -15,9 +15,11 @@ npm ci
 npm run dev
 ```
 
-Open [Fire Atlas](http://127.0.0.1:3000/fire-atlas). The Next.js server forwards API requests to `http://127.0.0.1:8787` by default. Set `FIRE_ATLAS_API_ORIGIN` in the frontend environment or `.env.local` if FastAPI runs at another origin. Set it before building for production.
+Open [Fire Atlas](http://127.0.0.1:3000/). In development, Next.js forwards API requests to `http://127.0.0.1:8787` by default. Set `FIRE_ATLAS_API_ORIGIN` in the frontend environment or `.env.local` if FastAPI runs at another origin.
 
-Run `npm run build` and `npm start` from this repository root to run the production build alongside FastAPI.
+## Deploy the frontend
+
+In Vercel, select the **Next.js** framework preset and the repository root. Fire Atlas opens at `/` and existing `/fire-atlas` page links redirect there. Production builds use the [Railway FastAPI service](https://fire-atlas-api-production.up.railway.app/api/fire-atlas/docs) by default. For a different backend, set `FIRE_ATLAS_API_ORIGIN` to its origin before building and redeploy. The same settings apply when running `npm run build` and `npm start` locally.
 
 ## Where to work
 

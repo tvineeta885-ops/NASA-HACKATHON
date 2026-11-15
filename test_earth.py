@@ -12,7 +12,7 @@ with sync_playwright() as playwright:
         headless=True, executable_path=executable, args=['--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
     )
     page = browser.new_page(viewport={'width': 1280, 'height': 900}, reduced_motion='reduce')
-    page.goto(base + '/fire-atlas', timeout=30000)
+    page.goto(base + '/', timeout=30000)
     earth = page.locator('.earth-stage')
     expect(earth).to_have_attribute('data-renderer', 'webgl', timeout=20000)
     page.get_by_role('button', name='Combined', exact=True).click()
@@ -33,7 +33,7 @@ with sync_playwright() as playwright:
     expect(regional_map).to_be_in_viewport()
 
     page = browser.new_page(viewport={'width': 1280, 'height': 900})
-    page.goto(base + '/fire-atlas', timeout=30000)
+    page.goto(base + '/', timeout=30000)
     expect(page.locator('.earth-stage')).to_have_attribute('data-renderer', 'webgl', timeout=20000)
     canvas = page.locator('.earth-canvas canvas')
     before = canvas.screenshot()
@@ -54,7 +54,7 @@ with sync_playwright() as playwright:
 
     browser = playwright.chromium.launch(headless=True, executable_path=executable, args=['--disable-webgl'])
     fallback = browser.new_page()
-    fallback.goto(base + '/fire-atlas', timeout=30000)
+    fallback.goto(base + '/', timeout=30000)
     expect(fallback.locator('.earth-stage')).to_have_attribute('data-renderer', 'fallback')
     expect(fallback.locator('.earth-placeholder')).to_be_visible()
     fallback.get_by_role('button', name='Combined', exact=True).click()

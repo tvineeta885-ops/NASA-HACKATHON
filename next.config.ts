@@ -2,15 +2,24 @@ import type { NextConfig } from 'next'
 import { fileURLToPath } from 'node:url'
 import { maxFileBytes } from './contract'
 
-const apiOrigin = (process.env.FIRE_ATLAS_API_ORIGIN || 'http://127.0.0.1:8787').replace(/\/$/, '')
+const defaultApiOrigin = process.env.NODE_ENV === 'production'
+  ? 'https://fire-atlas-api-production.up.railway.app'
+  : 'http://127.0.0.1:8787'
+const apiOrigin = (process.env.FIRE_ATLAS_API_ORIGIN || defaultApiOrigin).replace(/\/$/, '')
 
 const config: NextConfig = {
-  basePath: '/fire-atlas',
   turbopack: { root: fileURLToPath(new URL('.', import.meta.url)) },
   agentRules: false,
   experimental: { proxyClientMaxBodySize: 2 * maxFileBytes + 16_384 },
+  async redirects() {
+    return [{ source: '/fire-atlas', destination: '/', permanent: true }]
+  },
   async rewrites() {
-    return [{ source: '/api/fire-atlas/:path*', destination: `${apiOrigin}/api/fire-atlas/:path*` }]
+    const destination = `${apiOrigin}/api/fire-atlas/:path*`
+    return [
+      { source: '/api/fire-atlas/:path*', destination },
+      { source: '/fire-atlas/api/fire-atlas/:path*', destination },
+    ]
   },
 }
 
