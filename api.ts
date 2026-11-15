@@ -10,7 +10,7 @@ export async function loadDataset(bounds: Bounds, files?: ImportFiles, signal?: 
     body.set('MODIS', files.MODIS)
     body.set('VIIRS', files.VIIRS)
   }
-  const response = await fetch(`/fire-atlas/api/fire-atlas/${route}?${query}`, { method: files ? 'POST' : 'GET', body, signal })
+  const response = await fetch(`/api/fire-atlas/${route}?${query}`, { method: files ? 'POST' : 'GET', body, signal })
   if (!response.headers.get('content-type')?.includes('application/json')) {
     throw new Error('The Fire Atlas API is unavailable. Check that the backend is running and try again.')
   }

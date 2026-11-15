@@ -22,8 +22,11 @@ with sync_playwright() as playwright:
     expect.set_options(timeout=15000)
     errors = []
     page.on('pageerror', lambda error: errors.append(str(error)))
-    api = base + '/fire-atlas/api/fire-atlas'
+    old_home = page.request.get(base + '/fire-atlas', max_redirects=0)
+    assert old_home.status == 308 and old_home.headers['location'] == '/'
+    api = base + '/api/fire-atlas'
     assert page.request.get(api + '/health').json() == {'status': 'ok'}
+    assert page.request.get(base + '/fire-atlas/api/fire-atlas/health').json() == {'status': 'ok'}
     provenance = page.request.get(api + '/provenance').json()
     assert (provenance['start_year'], provenance['end_year'], len(provenance['files'])) == (2013, 2025, 26)
     archive = page.request.get(api + '/archive').json()
@@ -32,8 +35,8 @@ with sync_playwright() as playwright:
     assert archive['agreement']['2025-08']['shared'] == 381
     assert page.request.get(api + '/archive?bounds=7,10,4,15').status == 400
     assert page.request.post(api + '/import', data='invalid').status == 415
-    assert page.request.get(base + '/fire-atlas/backend/archive/modis.csv').status == 404
-    page.goto(base + '/fire-atlas/', wait_until='networkidle', timeout=20000)
+    assert page.request.get(base + '/backend/archive/modis.csv').status == 404
+    page.goto(base + '/', wait_until='networkidle', timeout=20000)
     expect(page.get_by_role('heading', name='August 2025')).to_be_visible()
     if archive.get('harmonized'):
         expect(page.get_by_role('button', name='Harmonized')).to_have_attribute('aria-pressed', 'true')

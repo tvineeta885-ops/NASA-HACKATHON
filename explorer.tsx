@@ -416,7 +416,7 @@ export default function Explorer() {
         <h3>2. Use a common grid and date</h3><p>Assign each detection center to a 5 × 5 km equal-area grid cell and UTC day. Each sensor counts a cell once on that day. Combined takes the union. Monthly totals sum these daily occupied cells.</p>
         <h3>3. Calibrate across sensors</h3><p>For each Portugal preset, fit the ratio of MODIS to S-NPP VIIRS cell-days by calendar quarter on 2013–2020 data. Check the adjustment on 2021–2025. The harmonized series uses MODIS through 2012 and adjusted VIIRS thereafter. Historical comparisons use the same calendar month in earlier years.</p>
         <h3>Interpret the counts</h3><p>Zero means no retained detections. Coverage can vary with overpasses, cloud and instrument sensitivity. Occupied cells describe detected activity. Fire extent, incident counts and hazard forecasts require other data.</p>
-        <p><a href={firms} target="_blank" rel="noreferrer">NASA FIRMS resources</a> · <a href={firmsAttributes} target="_blank" rel="noreferrer">FIRMS data fields</a> · <a href="/fire-atlas/api/fire-atlas/provenance" target="_blank" rel="noreferrer">Archive provenance</a></p></div>
+        <p><a href={firms} target="_blank" rel="noreferrer">NASA FIRMS resources</a> · <a href={firmsAttributes} target="_blank" rel="noreferrer">FIRMS data fields</a> · <a href="/api/fire-atlas/provenance" target="_blank" rel="noreferrer">Archive provenance</a></p></div>
     </Modal>}
   </>
 }
