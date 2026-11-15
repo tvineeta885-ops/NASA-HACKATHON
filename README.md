@@ -19,7 +19,12 @@ Open [Fire Atlas](http://127.0.0.1:3000/). In development, Next.js forwards API 
 
 ## Deploy the frontend
 
-In Vercel, select the **Next.js** framework preset and the repository root. Fire Atlas opens at `/` and existing `/fire-atlas` page links redirect there. Production builds use the [Railway FastAPI service](https://fire-atlas-api-production.up.railway.app/api/fire-atlas/docs) by default. For a different backend, set `FIRE_ATLAS_API_ORIGIN` to its origin before building and redeploy. The same settings apply when running `npm run build` and `npm start` locally.
+1. In Vercel, open the project that owns the frontend domain and use the repository root. `vercel.json` selects the Next.js framework preset.
+2. Check **Environment Variables** for Production. Builds default to the [Railway FastAPI service](https://fire-atlas-api-production.up.railway.app/api/fire-atlas/docs). If `FIRE_ATLAS_API_ORIGIN` is set, use `https://fire-atlas-api-production.up.railway.app` to select that service. Save changes before building.
+3. In **Deployments**, create a deployment from the desired commit on `codex/earth-sun-redesign`. If it shows as Preview, choose **Promote to Production** and confirm the frontend domain is listed. [Vercel promotion guide](https://vercel.com/docs/deployments/promoting-a-deployment)
+4. On the deployed frontend, open `/api/fire-atlas/health` and check for HTTP 200 with `{"status":"ok"}`. Then open `/` and select **Recent hotspots** to verify that the dashboard loads NASA FIRMS observations.
+
+Existing `/fire-atlas` page links redirect to `/`. The same backend setting applies when running `npm run build` and `npm start` locally.
 
 ## Where to work
 
