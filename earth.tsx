@@ -4,17 +4,19 @@ import { useEffect, useRef, useState } from 'react'
 import { ArrowDownRight, Crosshair, Pause, Play } from 'lucide-react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+import { makeSolarScene } from './solar-scene'
 import type { Cell, Layer } from './contract'
 import world from './assets/world.jpg'
 import still from './assets/earth-still.webp'
+import night from './assets/earth-night.webp'
+import clouds from './assets/earth-clouds.webp'
 
 type Focus = { lat: number; lon: number }
 type PointSet = { cells: Cell[]; layer: Layer }
 type EarthProps = PointSet & { focus: Focus; date: string; area: string; onShowHotspots?: () => void }
 type Flight = { from: THREE.Spherical; to: THREE.Spherical; zoom: boolean; start?: number; arrived?: () => void }
 
-const europe = { lat: 34, lon: -24 }
-const surface = 1
+const europe = { lat: 31, lon: -1 }
 const rad = Math.PI / 180
 const colors = { MODIS: '#ffd18d', VIIRS: '#ff6c45', shared: '#fff2d4' }
 
@@ -22,20 +24,6 @@ function position(lat: number, lon: number, radius: number) {
   const phi = lat * rad
   const theta = lon * rad
   return new THREE.Vector3(radius * Math.cos(phi) * Math.cos(theta), radius * Math.sin(phi), -radius * Math.cos(phi) * Math.sin(theta))
-}
-
-function graticule() {
-  const vertices: number[] = []
-  function line(points: THREE.Vector3[]) {
-    for (let i = 1; i < points.length; i++) vertices.push(...points[i - 1].toArray(), ...points[i].toArray())
-  }
-  for (let lat = -60; lat <= 60; lat += 30) {
-    line(Array.from({ length: 97 }, (_, i) => position(lat, i * 3.75, 1.001)))
-  }
-  for (let lon = 0; lon < 360; lon += 30) {
-    line(Array.from({ length: 49 }, (_, i) => position(-90 + i * 3.75, lon, 1.001)))
-  }
-  return new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3))
 }
 
 export function EarthPlaceholder() {
@@ -64,14 +52,14 @@ export default function Earth({ cells, layer, focus, date, area, onShowHotspots 
       return
     }
     renderer.setClearColor(0x000000, 0)
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.65))
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.45))
     const canvas = renderer.domElement
     canvas.setAttribute('aria-label', 'Interactive 3D Earth. Drag or use the arrow keys to rotate.')
     canvas.tabIndex = 0
     element.append(canvas)
 
     const scene = new THREE.Scene()
-    const camera = new THREE.PerspectiveCamera(33, 1, 0.1, 25)
+    const camera = new THREE.PerspectiveCamera(33, 1, 0.1, 40)
     const controls = new OrbitControls(camera, canvas)
     controls.enablePan = false
     controls.enableZoom = false
@@ -80,23 +68,7 @@ export default function Earth({ cells, layer, focus, date, area, onShowHotspots 
     controls.minPolarAngle = 0.09
     controls.maxPolarAngle = Math.PI - 0.09
 
-    const sphere = new THREE.SphereGeometry(surface, 80, 56)
-    const material = new THREE.MeshStandardMaterial({ color: 0xf2f8fa, roughness: 1 })
-    scene.add(new THREE.Mesh(sphere, material), new THREE.HemisphereLight(0xc9eaff, 0x40516a, 1.4))
-    const keyLight = new THREE.DirectionalLight(0xffe8d8, 2.15)
-    scene.add(keyLight)
-    const grid = graticule()
-    const gridInk = new THREE.LineBasicMaterial({ color: 0xafcbe4, transparent: true, opacity: 0.17, depthWrite: false })
-    scene.add(new THREE.LineSegments(grid, gridInk))
-
-    const atmosphere = new THREE.ShaderMaterial({
-      vertexShader: `varying vec3 normalView; varying vec3 viewDir;
-        void main() { vec4 view = modelViewMatrix * vec4(position * 1.033, 1.0); normalView = normalize(normalMatrix * normal); viewDir = normalize(-view.xyz); gl_Position = projectionMatrix * view; }`,
-      fragmentShader: `varying vec3 normalView; varying vec3 viewDir;
-        void main() { float edge = pow(1.0 - clamp(abs(dot(normalize(normalView), normalize(viewDir))), 0.0, 1.0), 3.2); gl_FragColor = vec4(0.40, 0.68, 0.91, edge * 0.39); }`,
-      side: THREE.BackSide, transparent: true, depthWrite: false,
-    })
-    scene.add(new THREE.Mesh(sphere, atmosphere))
+    const solar = makeSolarScene(scene)
 
     const marker = document.createElement('canvas')
     marker.width = marker.height = 32
@@ -118,10 +90,10 @@ export default function Earth({ cells, layer, focus, date, area, onShowHotspots 
     let intersecting = true
     let frame = 0
     let previous = 0
-    let distance = 4.15
+    let distance = 4.65
+    let elapsed = 0
     let flight: Flight | null = null
     const cameraPath = new THREE.Spherical()
-    const lightOffset = new THREE.Vector3()
     function draw(time: number) {
       frame = -1
       if (flight) {
@@ -137,11 +109,12 @@ export default function Earth({ cells, layer, focus, date, area, onShowHotspots 
         controls.update()
         if (progress === 1) finishFlight()
       } else if (controls.autoRotate) {
-        controls.update(previous ? Math.min(0.04, (time - previous) / 1000) : 0)
+        const delta = previous ? Math.min(0.04, (time - previous) / 1000) : 0
+        controls.update(delta)
+        elapsed += delta
       }
       previous = controls.autoRotate ? time : 0
-      lightOffset.set(-0.70, 0.58, 0.55).applyQuaternion(camera.quaternion)
-      keyLight.position.copy(lightOffset)
+      solar.update(camera, elapsed)
       renderer.render(scene, camera)
       frame = 0
       if (flight || controls.autoRotate) schedule()
@@ -197,6 +170,8 @@ export default function Earth({ cells, layer, focus, date, area, onShowHotspots 
 
     camera.position.copy(position(europe.lat, europe.lon, distance))
     controls.update()
+    const initialCamera = camera.clone()
+    solar.setLight(initialCamera, false)
     updatePreference()
     preference.addEventListener('change', updatePreference)
     const resize = new ResizeObserver(([entry]) => {
@@ -204,10 +179,10 @@ export default function Earth({ cells, layer, focus, date, area, onShowHotspots 
       if (!width || !height) return
       camera.aspect = width / height
       camera.updateProjectionMatrix()
-      if (!flight && camera.position.length() >= distance - 0.05) {
-        camera.position.setLength(Math.max(4.15, 4.15 / camera.aspect))
-      }
-      distance = Math.max(4.15, 4.15 / camera.aspect)
+      const nextDistance = Math.max(4.65, 5.0 / camera.aspect)
+      if (!flight && camera.position.length() >= distance - 0.05) camera.position.setLength(nextDistance)
+      distance = nextDistance
+      solar.setLight(initialCamera, camera.aspect < 1.27)
       if (flight && !flight.zoom) flight.to.radius = distance
       renderer.setSize(width, height, false)
       controls.update()
@@ -227,15 +202,24 @@ export default function Earth({ cells, layer, focus, date, area, onShowHotspots 
     canvas.addEventListener('webglcontextlost', contextLost)
     document.addEventListener('visibilitychange', schedule)
 
-    const texture = new THREE.TextureLoader().load(world.src, () => {
-      if (disposed) return
-      material.map = texture
-      material.needsUpdate = true
-      setReady(true)
-      schedule()
-    }, undefined, () => { if (!disposed) setFailed(true) })
-    texture.colorSpace = THREE.SRGBColorSpace
-    texture.anisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 4)
+    const loader = new THREE.TextureLoader()
+    const textures: THREE.Texture[] = []
+    function loadTexture(src: string, color: boolean) {
+      return new Promise<THREE.Texture>((resolve, reject) => {
+        const texture = loader.load(src, resolve, undefined, reject)
+        texture.colorSpace = color ? THREE.SRGBColorSpace : THREE.NoColorSpace
+        texture.anisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 4)
+        textures.push(texture)
+      })
+    }
+    Promise.all([loadTexture(world.src, true), loadTexture(night.src, true), loadTexture(clouds.src, false)])
+      .then(([day, dark, cloud]) => {
+        if (disposed) return
+        solar.setTextures(day, dark, cloud)
+        setReady(true)
+        schedule()
+      })
+      .catch(() => { if (!disposed) { interrupt(); setFailed(true) } })
 
     sceneApi.current = {
       flyTo,
@@ -272,7 +256,8 @@ export default function Earth({ cells, layer, focus, date, area, onShowHotspots 
       controls.dispose()
       resize.disconnect()
       visibility.disconnect()
-      for (const resource of [points.geometry, pointTexture, pointMaterial, material, texture, sphere, grid, gridInk, atmosphere]) resource.dispose()
+      solar.dispose()
+      for (const resource of [points.geometry, pointTexture, pointMaterial, ...textures]) resource.dispose()
       renderer.dispose()
       canvas.remove()
     }
@@ -289,7 +274,7 @@ export default function Earth({ cells, layer, focus, date, area, onShowHotspots 
   return <div className="earth-stage" data-renderer={failed ? 'fallback' : ready ? 'webgl' : 'loading'} data-points={cells.length}>
     {(!ready || failed) && <EarthPlaceholder />}
     <div className="earth-canvas" ref={container} data-ready={ready && !failed} />
-    <div className="earth-coordinate"><Crosshair size={14} /><span>{date} UTC</span><span>{cells.length} occupied cells</span></div>
+    <div className="earth-coordinate"><span>{area}</span><span>{date} UTC · {cells.length} occupied cells</span></div>
     <div className="earth-controls">
       {ready && !failed && <>
         <button type="button" onClick={() => sceneApi.current?.flyTo(focus)} title={`Center on ${area}`}><Crosshair size={15} /> Locate area</button>
@@ -297,6 +282,7 @@ export default function Earth({ cells, layer, focus, date, area, onShowHotspots 
       </>}
       {onShowHotspots && <button type="button" className="earth-map-link" onClick={zoomToHotspots}>Zoom to hotspots <ArrowDownRight size={16} /></button>}
     </div>
+    {ready && !failed && <span className="earth-light-note">Illustrative sunlight</span>}
     {failed && <span className="earth-fallback-note">Earth preview · see regional map for hotspots</span>}
   </div>
 }
